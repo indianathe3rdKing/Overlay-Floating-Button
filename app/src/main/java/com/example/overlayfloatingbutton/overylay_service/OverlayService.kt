@@ -122,7 +122,8 @@ class OverlayService : Service() {
 
     override fun onDestroy() {
         overlayView?.let {
-
+         lifecycleOwner.handleLifecycleEvent(Lifecycle.Event.ON_STOP)
+            lifecycleOwner.handleLifecycleEvent(Lifecycle.Event.ON_CREATE)
             try {
                 windowManager.removeView(it)
             } catch (_: Throwable) {
