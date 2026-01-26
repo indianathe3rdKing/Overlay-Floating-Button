@@ -4,6 +4,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.IBinder
 import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -32,20 +33,20 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-
+        ensureOverlayPermissionAndStart()
     }
 
     override fun onResume() {
         super.onResume()
-
+        ensureOverlayPermissionAndStart()
     }
 
 
-    private fun ensureOverlayPermissionAndStart(){
-        if (Build.VERSION.SDK_INT>= Build.VERSION_CODES.M &&!Settings.canDrawOverlays(this)){
-            val intent= Intent(
+    private fun ensureOverlayPermissionAndStart() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
+            val intent = Intent(
                 Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                Uri.parse("packege:$packageName")
+                Uri.parse("package:$packageName")
             )
             startActivity(intent)
             return
@@ -53,8 +54,6 @@ class MainActivity : ComponentActivity() {
 
         startService(Intent(this, OverlayService::class.java))
     }
-
-
 
 
 }

@@ -49,9 +49,21 @@ class OverlayService : Service() {
 
     private val windowManager get() = getSystemService(WINDOW_SERVICE) as WindowManager
     private var overlayView: ComposeView? = null
+    private val lifecycleOwner = MyLifecycleOwner()
+    private val viewModelStore = ViewModelStore()
+    private val viewModelStoreOwner = object : ViewModelStoreOwner {
+        override val viewModelStore: ViewModelStore
+            get() = viewModelStore
+    }
+
 
     override fun onCreate() {
         super.onCreate()
+    }
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        showOverlay()
+        return START_NOT_STICKY
     }
 
     private fun showOverlay() {
@@ -79,58 +91,51 @@ class OverlayService : Service() {
                     WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
             PixelFormat.TRANSLUCENT
         ).apply {
-            gravity= Gravity.TOP or Gravity.START
-            x=0
-            y=200
+            gravity = Gravity.TOP or Gravity.START
+            x = 0
+            y = 200
         }
 
-        val composeView= ComposeView(this).apply { isClickable=true }
+        val composeView = ComposeView(this).apply { isClickable = true }
 
         composeView.setContent {
-            FloatingButton(onMoveBy = {
-                dx,dy->
-                params.x+=dx
-                params.y+=dy
-                windowManager.updateViewLayout(composeView,params)
-            },{stopOverlay()})
+            FloatingButton(onMoveBy = { dx, dy ->
+                params.x += dx
+                params.y += dy
+                windowManager.updateViewLayout(composeView, params)
+            }, { stopOverlay() })
         }
 
-    val viewModelStore = ViewModelStore()
-    val viewModelStoreOwner= object: ViewModelStoreOwner{
-        override val viewModelStore: ViewModelStore
-            get() = viewModelStore
-    }
 
-     val lifecycleOwner= MyLifecycleOwner()
 
-     lifecycleOwner.performRestore(null)
-     lifecycleOwner.handleLifecycleEvent(Lifecycle.Event.ON_CREATE)
-     lifecycleOwner.handleLifecycleEvent(Lifecycle.Event.ON_START)
+        lifecycleOwner.performRestore(null)
+        lifecycleOwner.handleLifecycleEvent(Lifecycle.Event.ON_CREATE)
+        lifecycleOwner.handleLifecycleEvent(Lifecycle.Event.ON_START)
 
-     composeView.setViewTreeLifecycleOwner(lifecycleOwner)
-     composeView.setViewTreeSavedStateRegistryOwner(lifecycleOwner)
-     composeView.setViewTreeViewModelStoreOwner(viewModelStoreOwner)
+        composeView.setViewTreeLifecycleOwner(lifecycleOwner)
+        composeView.setViewTreeSavedStateRegistryOwner(lifecycleOwner)
+        composeView.setViewTreeViewModelStoreOwner(viewModelStoreOwner)
 
-        overlayView= composeView
-        windowManager.addView(composeView,params)
+        overlayView = composeView
+        windowManager.addView(composeView, params)
     }
 
     override fun onDestroy() {
-        overlayView?.let{
+        overlayView?.let {
+
             try {
                 windowManager.removeView(it)
-            }catch (_: Throwable){
+            } catch (_: Throwable) {
 
             }
         }
-        overlayView= null
+        overlayView = null
         super.onDestroy()
     }
 
-    fun stopOverlay(){
+    fun stopOverlay() {
         stopSelf()
     }
-
 
 
     override fun onBind(intent: Intent?): IBinder? {
@@ -141,9 +146,9 @@ class OverlayService : Service() {
 
 @Composable
 private fun FloatingButton(
-    onMoveBy:(dx:Int,dy: Int)-> Unit,
-    onClose:()-> Unit
-){
+    onMoveBy: (dragx: Int, dragy: Int) -> Unit,
+    onClose: () -> Unit
+) {
     var expanded by remember { mutableStateOf(false) }
 
     Column(
@@ -154,23 +159,23 @@ private fun FloatingButton(
     ) {
 
         AnimatedVisibility(
-            visible = expanded
-            ,enter= fadeIn()+ slideInVertically(initialOffsetY = {it})+ expandVertically(),
-            exit = fadeOut()+ slideOutVertically(targetOffsetY = {it})+ shrinkVertically()
+            visible = expanded,
+            enter = fadeIn() + slideInVertically(initialOffsetY = { it }) + expandVertically(),
+            exit = fadeOut() + slideOutVertically(targetOffsetY = { it }) + shrinkVertically()
         ) {
             FloatingActionButton(
-                onClick = {onClose},
-                containerColor = Color(8, 32, 166, 255)
-            ){
-                Icon(imageVector = Icons.Filled.Clear,null)
+                onClick = { onClose() },
+                containerColor = Color(47, 68, 189, 255)
+            ) {
+                Icon(imageVector = Icons.Filled.Clear, null,tint=Color(255,255,255,255))
             }
         }
 
         FloatingActionButton(
-            {expanded=!expanded},
-            containerColor = Color(8, 32, 166, 255),
+            { expanded = !expanded },
+            containerColor = Color(47, 68, 189, 255),
             modifier = Modifier
-                .pointerInput(Unit){
+                .pointerInput(Unit) {
                     detectDragGestures { change, dragAmount ->
                         change.consume()
                         onMoveBy(
@@ -181,11 +186,10 @@ private fun FloatingButton(
                     }
 
                 }
-                .padding(6.dp)
-            , contentColor = Color(0, 32, 166, 255),
+                .padding(6.dp), contentColor = Color(0, 32, 166, 255),
             elevation = FloatingActionButtonDefaults.bottomAppBarFabElevation()
         ) {
-            Icon(imageVector = Icons.Filled.Add,null)
+            Icon(imageVector = Icons.Filled.Add, null,tint = Color(255,255,255, 255))
         }
 
 
