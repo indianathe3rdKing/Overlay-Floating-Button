@@ -69,5 +69,17 @@ internal class GestureExecutor @Inject constructor(){
         }?:Log.w(TAG,"Cant resume continuation.Did the same event got two results ?")
     }
 
+    private fun newGestureResultCallback()=object:GestureResultCallback(){
+        override fun onCompleted(gestureDescription: GestureDescription?) {
+            completeGesture++
+            resumeExecution(gestureError = false)
+        }
+
+        override fun onCancelled(gestureDescription: GestureDescription?){
+            cancelledGestures++
+            resumeExecution(gestureError = false)
+        }
+    }
+
 
 }
