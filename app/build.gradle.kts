@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+
 }
 
 android {
@@ -70,5 +71,7 @@ dependencies {
         implementation("androidx.compose.material:material-icons-extended:$compose_version")
         implementation("androidx.activity:activity-compose:1.3.1")
 
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.3.9")
+    implementation("javax.inject:javax.inject:1")
 
 }
