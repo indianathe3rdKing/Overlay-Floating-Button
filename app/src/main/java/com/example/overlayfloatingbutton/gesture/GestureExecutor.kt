@@ -5,7 +5,6 @@ package com.example.overlayfloatingbutton.gesture
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.AccessibilityService.GestureResultCallback
 import android.accessibilityservice.GestureDescription
-import android.content.ContentValues.TAG
 import android.gesture.Gesture
 import android.util.Log
 
@@ -83,3 +82,4 @@ internal class GestureExecutor @Inject constructor(){
 
 
 }
+private const val TAG = "GestureExecutor"
