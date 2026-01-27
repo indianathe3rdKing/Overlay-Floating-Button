@@ -12,6 +12,7 @@ import android.util.Log
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.coroutines.Continuation
+import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
 @Singleton
@@ -52,6 +53,20 @@ internal class GestureExecutor @Inject constructor(){
                 resumeExecution(gestureError =true)
             }
         }
+    }
+
+    private fun resumeExecution(gestureError: Boolean){
+        currentContinuation?.let{
+            continuation ->
+            currentContinuation = null
+
+            try{
+                continuation.resume(!gestureError)
+            }catch (isEx: IllegalStateException){
+                Log.w(TAG,"Continuation is already resumed.Dis the same event get two results",isEx)
+
+            }
+        }?:Log.w(TAG,"Cant resume continuation.Did the same event got two results ?")
     }
 
 
