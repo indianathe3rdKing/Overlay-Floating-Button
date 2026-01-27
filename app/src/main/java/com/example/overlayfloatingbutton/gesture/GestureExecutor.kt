@@ -21,7 +21,14 @@ internal class GestureExecutor @Inject constructor(){
     private var cancelledGestures:Long = 0L
     private var errorGestures:Long=0L
 
+    fun clear(){
+        completeGesture=0L
+        cancelledGestures=0L
+        errorGestures=0L
 
+        resultCallback=null
+        currentContinuation=null
+    }
 
 
 }
