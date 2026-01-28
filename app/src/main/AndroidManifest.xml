@@ -26,6 +26,20 @@
             android:enabled="true"
             android:exported="false"/>
 
+        <!-- Accessibility service registration -->
+        <service
+            android:name=".accessibility.AutoClickAccessibilityService"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/accessibility_service_config" />
+        </service>
+
+
     </application>
 
 </manifest>

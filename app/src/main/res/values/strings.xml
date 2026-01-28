@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">Overlay Floating Button</string>
+    <string name="accessibility_service_description">Auto Click accessibility service used to dispatch gestures for the overlay floating button.</string>
 </resources>

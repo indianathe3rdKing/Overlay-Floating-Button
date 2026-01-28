@@ -7,6 +7,7 @@ import android.os.Build
 import android.os.IBinder
 import android.provider.Settings
 import android.view.Gravity
+import android.view.ViewTreeObserver
 import android.view.WindowManager
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
@@ -23,6 +24,7 @@ import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
@@ -44,18 +46,23 @@ import androidx.lifecycle.setViewTreeViewModelStoreOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.example.overlayfloatingbutton.lifecycle_owner.MyLifecycleOwner
 import kotlin.math.roundToInt
+import com.example.overlayfloatingbutton.accessibility.AutoClickAccessibilityService
+
 
 class OverlayService : Service() {
 
     private val windowManager get() = getSystemService(WINDOW_SERVICE) as WindowManager
     private var overlayView: ComposeView? = null
     private val lifecycleOwner = MyLifecycleOwner()
-    private val viewModelStore = ViewModelStore()
+    // renamed to avoid recursive getter
+    private val vmStore = ViewModelStore()
     private val viewModelStoreOwner = object : ViewModelStoreOwner {
         override val viewModelStore: ViewModelStore
-            get() = viewModelStore
+            get() = vmStore
     }
 
+    // keep a reference to the global layout listener so we can remove the exact instance later
+    private var overlayGlobalLayoutListener: ViewTreeObserver.OnGlobalLayoutListener? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -98,11 +105,35 @@ class OverlayService : Service() {
 
         val composeView = ComposeView(this).apply { isClickable = true }
 
+        // Calculate the draggable FAB size in pixels (default Material FAB is 56dp)
+        val metrics = resources.displayMetrics
+        val fabSizePx = (56 * metrics.density).roundToInt()
+
+        // track measured overlay size so we can compute the main FAB center even when the expanded menu is visible
+        var overlayWidth = 0
+        var overlayHeight = 0
+        overlayGlobalLayoutListener = ViewTreeObserver.OnGlobalLayoutListener {
+            overlayWidth = composeView.width
+            overlayHeight = composeView.height
+        }
+        composeView.viewTreeObserver.addOnGlobalLayoutListener(overlayGlobalLayoutListener)
+
         composeView.setContent {
             FloatingButton(onMoveBy = { dx, dy ->
                 params.x += dx
                 params.y += dy
                 windowManager.updateViewLayout(composeView, params)
+            }, {
+                // Compute click coordinates targeting the main draggable FAB which sits at the bottom of the overlay column.
+                // If overlay measurements aren't available yet, fall back to using the FAB size.
+                val currentOverlayW = if (overlayWidth > 0) overlayWidth else fabSizePx
+                val currentOverlayH = if (overlayHeight > 0) overlayHeight else fabSizePx
+
+                val clickX = params.x + (currentOverlayW / 2)
+                // main FAB is at the bottom of the overlay column -> offset from params.y by overlay height, then back up by half a FAB
+                val clickY = params.y + currentOverlayH - (fabSizePx / 2)
+
+                toggleAutoClick(clickX, clickY, 1000L)
             }, { stopOverlay() })
         }
 
@@ -125,6 +156,10 @@ class OverlayService : Service() {
          lifecycleOwner.handleLifecycleEvent(Lifecycle.Event.ON_STOP)
             lifecycleOwner.handleLifecycleEvent(Lifecycle.Event.ON_DESTROY)
             try {
+                // remove global layout listener to avoid leaks
+                overlayGlobalLayoutListener?.let { listener ->
+                    it.viewTreeObserver.removeOnGlobalLayoutListener(listener)
+                }
                 windowManager.removeView(it)
             } catch (_: Throwable) {
 
@@ -138,6 +173,35 @@ class OverlayService : Service() {
         stopSelf()
     }
 
+    // Helpers to trigger accessibility service actions
+    fun performSingleClickAt(x: Int, y: Int) {
+        val svc = AutoClickAccessibilityService.instance
+        if (svc != null) {
+            svc.performClickAsync(x, y)
+        } else {
+            // Service not enabled, open settings for the user to enable it
+            val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            startActivity(intent)
+        }
+    }
+
+    fun toggleAutoClick(x: Int, y: Int, intervalMs: Long) {
+        val svc = AutoClickAccessibilityService.instance
+        if (svc != null) {
+            svc.toggleAutoClick(x, y, intervalMs)
+        } else {
+            val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+
+            startActivity(intent)
+
+        }
+    }
+
+
 
     override fun onBind(intent: Intent?): IBinder? {
         return null
@@ -148,6 +212,7 @@ class OverlayService : Service() {
 @Composable
 private fun FloatingButton(
     onMoveBy: (dragx: Int, dragy: Int) -> Unit,
+    performClick:()->Unit,
     onClose: () -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -164,12 +229,25 @@ private fun FloatingButton(
             enter = fadeIn() + slideInVertically(initialOffsetY = { it }) + expandVertically(),
             exit = fadeOut() + slideOutVertically(targetOffsetY = { it }) + shrinkVertically()
         ) {
+            Column(
+                modifier = Modifier
+                    .padding()
+                    .wrapContentWidth()
+                    .wrapContentHeight()
+            ){
             FloatingActionButton(
                 onClick = { onClose() },
                 containerColor = Color(47, 68, 189, 255)
             ) {
                 Icon(imageVector = Icons.Filled.Clear, null,tint=Color(255,255,255,255))
             }
+            FloatingActionButton(
+                onClick = { performClick() },
+                containerColor = Color(47, 68, 189, 255)
+            ){
+                Icon(imageVector=Icons.Filled.PlayArrow,null,tint=Color(255,255,255,255))
+
+            }}
         }
 
         FloatingActionButton(

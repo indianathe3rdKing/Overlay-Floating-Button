@@ -5,17 +5,16 @@ package com.example.overlayfloatingbutton.gesture
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.AccessibilityService.GestureResultCallback
 import android.accessibilityservice.GestureDescription
-import android.gesture.Gesture
 import android.util.Log
 
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.coroutines.Continuation
 import kotlin.coroutines.resume
-import kotlin.coroutines.suspendCoroutine
+import kotlinx.coroutines.suspendCancellableCoroutine
 
 @Singleton
-internal class GestureExecutor @Inject constructor(){
+internal class GestureExecutor  @Inject constructor(){
 
     private var resultCallback: GestureResultCallback?= null
     private var currentContinuation: Continuation<Boolean>?= null
@@ -37,11 +36,11 @@ internal class GestureExecutor @Inject constructor(){
         if (currentContinuation!=null){
             Log.w(TAG,"Previous gesture result is not availaable yet, clearing listener to avoid stale events")
 
-        resultCallback= null
-        currentContinuation=null}
+            resultCallback= null
+            currentContinuation=null}
 
         resultCallback= resultCallback ?: newGestureResultCallback()
-        return suspendCoroutine { continuation ->
+        return suspendCancellableCoroutine { continuation ->
             currentContinuation= continuation
 
             try {
@@ -50,6 +49,13 @@ internal class GestureExecutor @Inject constructor(){
                 Log.w(TAG,"System is not responsive, the user might be spamming gesture too quick",rEx)
                 errorGestures++
                 resumeExecution(gestureError =true)
+            }
+
+            continuation.invokeOnCancellation {
+                // if coroutine is cancelled, clear state
+                if (currentContinuation === continuation) {
+                    currentContinuation = null
+                }
             }
         }
     }

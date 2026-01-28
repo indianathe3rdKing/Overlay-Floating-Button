@@ -27,6 +27,6 @@ internal class MyLifecycleOwner: SavedStateRegistryOwner{
         mSaveStateRegistryController.performRestore(savedState)
     }
     fun performSave(outBundle: Bundle){
-        mSaveStateRegistryController.performRestore(outBundle)
+        mSaveStateRegistryController.performSave(outBundle)
     }
 }
